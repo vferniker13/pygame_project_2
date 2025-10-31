@@ -7,30 +7,52 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var socket = io();
-            var form = document.getElementById("form");
-            var input = document.getElementById("input");
-            var messages = document.getElementById("messages");
-            var id = Math.random()
-            form.onsubmit = function(e) {
-                e.preventDefault();
-                socket.emit("message", {"message": input.value, "author": id});
-                input.value = "";
+            const canvas = document.getElementById('game');
+            const ctx = canvas.getContext('2d');
+            var players = {};
+            const speedx = 10;
+            const speedy = 10;
+            var player = {x: 200, y: 200}
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let id in players) {
+                    let player = players[id];
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+                    ctx.fill();  
+                };
             };
+            
+            function updatePlayer(id, x, y) {
+                player = {x, y};
+            }
 
-            socket.on('message', function(msg){
-                var item = document.createElement('li');
-                item.textContent = msg;
-                messages.appendChild(item);
+            document.onkeydown = function(e) {
+                if (e.key == 'w' || e.key == 'ц') {
+                    players.y -= 10;
+                }
+                if (e.key === 's' || e.key === 'ы') {
+                    player.y += 10;
+                }
+                if (e.key === 'd' || e.key === 'в') {
+                    player.x += 10;
+                }
+                if (e.key === 'a' || e.key === 'ф') {
+                    player.x -= 10;
+                }
+                socket.emit('move', {x: player.x, y: player.y});
+            };
+            socket.on('update_you', function(data){
+                updatePlayer(data.x, data.y);
+            });
+             socket.on('update_all', function(data){
+                players = data;
+                draw();
             });
         });
     </script>
     <body>
         <h1 align="center">Здесь будет игра</h1>
-        <form id="form">
-            <input id="input"/>
-            <button>Отправить сообщение</button>
-        </form>
-        <ul id="messages">
-        </ul>
+        <canvas width="800" height="800" id="game"></canvas>
     </body>
 </html>
