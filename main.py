@@ -16,6 +16,13 @@ players = {}
 users = {}
 count_players = 0
 
+def get_db():
+    db = session.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 def get_db():
     db = db_session.SessionLocal()
