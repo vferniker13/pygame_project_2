@@ -16,13 +16,6 @@ players = {}
 users = {}
 count_players = 0
 
-def get_db():
-    db = session.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 def get_db():
     db = db_session.SessionLocal()
@@ -39,7 +32,6 @@ def load_user(user_id):
 
 
 @app.route("/", methods=["GET"])
-@login_required
 def index():
     username = session.get("username")
     return render_template("index.html", username=username)
