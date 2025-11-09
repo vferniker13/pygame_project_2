@@ -32,7 +32,6 @@ def load_user(user_id):
 
 
 @app.route("/", methods=["GET"])
-@login_required
 def index():
     username = session.get("username")
     return render_template("index.html", username=username)
