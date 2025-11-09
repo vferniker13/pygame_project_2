@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 align="center" class="m-3">Ваш профиль</h2>
+
+<div class="container">
+
+<div class="text-center m-5">
+    <form method="post">
+    <div class="mb-3">
+        <label for="exampleInputEmail1" class="form-label">Юзернейм</label>
+        <input type="name" class="form-control" id="exampleInputEmail1" name="username">
+    </div>
+    <div class = "m-3">
+    <label for="exampleColorInput" class="form-label">Color picker</label>
+    <input type="color" class="form-control form-control-color" id="exampleColorInput" value="#563d7c" title="Choose your color">
+    <button type="submit" class="btn btn-primary">Поменять цвет</button>
+    </div>
+    </form>

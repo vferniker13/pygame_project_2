@@ -71,6 +71,12 @@ def login():
         return render_template("login.html", error="Пользователя не существует")
 
 
+@app.route("/profile",methods = ["GET","POST"])
+def profile():
+    if request.method == "GET":
+        return render_template("profile.html")
+
+
 @socket.on("connect")
 def on_connect():
     global players, count_players
