@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, session, redirect
 from flask_socketio import SocketIO
-from flask_login import LoginManager, login_user, login_required
+from flask_login import LoginManager, login_user, login_required, current_user
 from random import randint
 from models.models import User
 from utils import hash_password, verify_password
@@ -33,8 +33,7 @@ def load_user(user_id):
 
 @app.route("/", methods=["GET"])
 def index():
-    username = session.get("username")
-    return render_template("index.html", username=username)
+    return render_template("index.html", user=current_user)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -63,7 +62,6 @@ def login():
         data = request.form
         if db.query(User).filter(User.username == data["username"]).first():
             user = db.query(User).filter(User.username == data["username"]).first()
-            print(user)
             if verify_password(data["password1"], user.hashed_password):
                 login_user(user)
                 return redirect("/")
@@ -80,8 +78,11 @@ def profile():
 @socket.on("connect")
 def on_connect():
     global players, count_players
+    username = f"Гость{count_players}"
+    if current_user is not None:
+        username = current_user.username
     players[request.sid] = {
-        "username": f"Гость{count_players}",
+        "username": username,
         "x": randint(0, 750),
         "y": randint(0, 750),
     }

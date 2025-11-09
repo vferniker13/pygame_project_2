@@ -20,6 +20,10 @@
                     let player = players[id];
                     ctx.beginPath();
                     ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+                    ctx.font = "9px serif";
+                    ctx.fillStyle = "black";
+                    ctx.textAlign = "center";
+                    ctx.fillText(player["username"], player.x, player.y - 12, 20)
                     if (id == mySid) {
                         ctx.fillStyle = "red";
                     } else {
