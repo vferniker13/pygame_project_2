@@ -72,7 +72,13 @@ def login():
 @app.route("/profile",methods = ["GET","POST"])
 def profile():
     if request.method == "GET":
-        return render_template("profile.html")
+        db = next(get_db())
+        user = db.query(User).filter(User.id == current_user.id).first()
+        return render_template("profile.html",username = user.username)
+    if request.method == "POST":
+        db = next(get_db())
+        data = request.form
+        print(data["username"],data["color"])
 
 
 @socket.on("connect")

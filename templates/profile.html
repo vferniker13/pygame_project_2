@@ -9,11 +9,13 @@
     <form method="post">
     <div class="mb-3">
         <label for="exampleInputEmail1" class="form-label">Юзернейм</label>
-        <input type="name" class="form-control" id="exampleInputEmail1" name="username">
+        <input type="name" value="{{username}}" class="form-control" id="exampleInputEmail1" name="username">
     </div>
     <div class = "m-3">
     <label for="exampleColorInput" class="form-label">Color picker</label>
-    <input type="color" class="form-control form-control-color" id="exampleColorInput" value="#563d7c" title="Choose your color">
-    <button type="submit" class="btn btn-primary">Поменять цвет</button>
+    <input type="color" class="form-control form-control-color" name = "color" id="exampleColorInput" value="#563d7c" title="Choose your color">
+    <button type="submit" class="btn btn-primary">Изменить данные</button>
     </div>
     </form>
+</div>
+{% endblock %}
