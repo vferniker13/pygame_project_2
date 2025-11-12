@@ -69,16 +69,16 @@ def login():
         return render_template("login.html", error="Пользователя не существует")
 
 
-@app.route("/profile",methods = ["GET","POST"])
+@app.route("/profile", methods=["GET", "POST"])
 def profile():
     if request.method == "GET":
         db = next(get_db())
         user = db.query(User).filter(User.id == current_user.id).first()
-        return render_template("profile.html",username = user.username)
+        return render_template("profile.html", user=user)
     if request.method == "POST":
         db = next(get_db())
         data = request.form
-        print(data["username"],data["color"])
+        print(data["username"], data["color"])
 
 
 @socket.on("connect")
