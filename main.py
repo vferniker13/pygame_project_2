@@ -74,11 +74,15 @@ def profile():
     if request.method == "GET":
         db = next(get_db())
         user = db.query(User).filter(User.id == current_user.id).first()
-        return render_template("profile.html", user=user)
+        return render_template("profile.html", user = user)
     if request.method == "POST":
         db = next(get_db())
         data = request.form
-        print(data["username"], data["color"])
+        user = db.query(User).filter(User.id == current_user.id).first()
+        user.username = data["username"]
+        db.add(user)
+        db.commit()
+        return render_template("profile.html", user = user)
 
 
 @socket.on("connect")
