@@ -14,3 +14,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     Schema.metadata.create_all(bind=engine)
+
+
+
