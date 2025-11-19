@@ -1,6 +1,12 @@
 from flask import Flask, render_template, request, redirect
 from flask_socketio import SocketIO
-from flask_login import LoginManager, login_user, login_required, current_user, logout_user
+from flask_login import (
+    LoginManager,
+    login_user,
+    login_required,
+    current_user,
+    logout_user,
+)
 from random import randint
 from models.models import User
 from utils import hash_password, verify_password, generate_random_color
@@ -15,6 +21,7 @@ login_manager.init_app(app)
 players = {}
 users = {}
 count_players = 0
+hanter_chosen = False
 
 
 def get_db():
@@ -39,7 +46,7 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
-        return render_template("register.html",user = current_user)
+        return render_template("register.html", user=current_user)
     if request.method == "POST":
         db = next(get_db())
         data = request.form
@@ -51,13 +58,15 @@ def register():
             db.add(user)
             db.commit()
             return redirect("/")
-        return render_template("register.html",user = current_user, error="Пароли не совпадают!")
+        return render_template(
+            "register.html", user=current_user, error="Пароли не совпадают!"
+        )
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
-        return render_template("login.html",user = current_user)
+        return render_template("login.html", user=current_user)
     if request.method == "POST":
         db = next(get_db())
         data = request.form
@@ -66,8 +75,12 @@ def login():
             if verify_password(data["password1"], user.hashed_password):
                 login_user(user)
                 return redirect("/")
-            return render_template("login.html", user = current_user,error="Неверный пароль!")
-        return render_template("login.html", user = current_user,error="Пользователя не существует")
+            return render_template(
+                "login.html", user=current_user, error="Неверный пароль!"
+            )
+        return render_template(
+            "login.html", user=current_user, error="Пользователя не существует"
+        )
 
 
 @app.route("/profile", methods=["GET", "POST"])
@@ -75,30 +88,42 @@ def profile():
     if request.method == "GET":
         db = next(get_db())
         user = db.query(User).filter(User.id == current_user.id).first()
-        return render_template("profile.html", user = user)
+        return render_template("profile.html", user=user)
     if request.method == "POST":
         db = next(get_db())
         data = request.form
         user = db.query(User).filter(User.id == current_user.id).first()
         user.username = data["username"]
+        user.color = data["color"]
         db.add(user)
         db.commit()
-        print(data["color"])
-        return render_template("profile.html", user = user)
+        return render_template("profile.html", user=user)
+
+
+@app.route("/select/hunter/<sid>")
+def become_hunter(sid: str):
+    global players
+    players[sid]["role"] = "hunter"
+    if "":
+        pass
+    socket.emit("update_all", players)
 
 
 @socket.on("connect")
 def on_connect():
     global players, count_players
     username = f"Гость{count_players}"
-    print(current_user)
     if current_user.is_anonymous == False:
         username = current_user.username
     players[request.sid] = {
         "username": username,
         "x": randint(0, 750),
         "y": randint(0, 750),
+        "color": generate_random_color(),
+        "role": "survivor",
     }
+    if current_user.is_anonymous == False:
+        players[request.sid]["color"] = current_user.color
     count_players += 1
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
@@ -110,6 +135,7 @@ def on_disconnect():
     players.pop(request.sid, None)
     count_players -= 1
     socket.emit("update_all", players)
+
 
 @app.route("/logout")
 @login_required
@@ -124,6 +150,7 @@ def on_move(data):
         players[request.sid]["x"] = data["x"]
         players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
+        print(players)
 
 
 socket.run(app, debug=True)

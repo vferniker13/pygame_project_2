@@ -1,17 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Игра{% endblock %}
 {% block content %}
-    <h1 align="center">Здесь будет игра</h1>
+    {% if user.is_anonymous == False %}
+    <div class="text-center m-3">
+     <button type="join_to_hunter" class="btn btn-danger" id="hunter">Войти за охотника</button>
+     <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
+    </div>
+    {% endif %}
     <canvas width="800" height="800" id="game"></canvas>
 {% endblock %}
 {% block script %}
     <script>
+        var mySid = null;
+        var hunter_btn = document.getElementById("hunter")
+
+        hunter_btn.onclick = function() {
+            fetch("/select/hunter/" + mySid).then(response => {
+                return
+            })
+        };
+
         document.addEventListener("DOMContentLoaded", function() {
             var socket = io();
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             var players = {};
-            var mySid = null;
+            
             const speedx = 10;
             const speedy = 10;
             function draw() {
@@ -24,11 +38,7 @@
                     ctx.fillStyle = "black";
                     ctx.textAlign = "center";
                     ctx.fillText(player["username"], player.x, player.y - 12, 20)
-                    if (id == mySid) {
-                        ctx.fillStyle = "red";
-                    } else {
-                        ctx.fillStyle = "blue";
-                    }
+                    ctx.fillStyle = player["color"]
                     ctx.fill();  
                 };
             };
