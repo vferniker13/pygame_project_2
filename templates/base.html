@@ -16,7 +16,8 @@
                 </li>
             </ul>
             <div class="text-end">
-                {% if user.is_anonymous %}
+                
+                {% if user.is_anonymous == True %}
                     <a class="btn btn-success me-2" href="/register">Зарегистрироваться</a>
                     <a class="btn btn-danger" href="/login">Войти</a>
                 {% else %}
