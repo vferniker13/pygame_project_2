@@ -12,10 +12,21 @@
 {% block script %}
     <script>
         var mySid = null;
-        var hunter_btn = document.getElementById("hunter")
+        var hunter_btn = document.getElementById("hunter");
 
         hunter_btn.onclick = function() {
             fetch("/select/hunter/" + mySid).then(response => {
+                return response.json();
+            }).then(data => {
+                if (data["status"] == 403) {
+                    alert("Охотник уже выбран!")
+                }
+            })
+        };
+        var survivor_btn = document.getElementById("survivor");
+
+        survivor_btn.onclick = function() {
+            fetch("/select/survivor/" + mySid).then(response => {
                 return
             })
         };
@@ -37,7 +48,7 @@
                     ctx.font = "9px serif";
                     ctx.fillStyle = "black";
                     ctx.textAlign = "center";
-                    ctx.fillText(player["username"], player.x, player.y - 12, 20)
+                    ctx.fillText(player["role"], player.x, player.y - 12, 20)
                     ctx.fillStyle = player["color"]
                     ctx.fill();  
                 };

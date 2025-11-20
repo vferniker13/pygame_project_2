@@ -22,7 +22,8 @@ players = {}
 users = {}
 count_players = 0
 hanter_chosen = False
-
+MAX_HUNTER = 1
+is_hunter = False
 
 def get_db():
     db = db_session.SessionLocal()
@@ -102,11 +103,25 @@ def profile():
 
 @app.route("/select/hunter/<sid>")
 def become_hunter(sid: str):
-    global players
-    players[sid]["role"] = "hunter"
-    if "":
-        pass
+    global players, is_hunter
+    if is_hunter == False:
+        players[sid]["role"] = "hunter"
+        socket.emit("update_all", players)
+        socket.emit("update_info")
+        is_hunter = True
+        return {"status": 200}
+    return {"status": 403}
+
+
+@app.route("/select/survivor/<sid>")
+def become_survivor(sid: str):
+    global players, is_hunter
+    if players[sid]["role"] == "hunter":
+        is_hunter = False
+    players[sid]["role"] = "survivor"
     socket.emit("update_all", players)
+    socket.emit("update_info")
+    return {"status": 200}
 
 
 @socket.on("connect")
@@ -127,6 +142,7 @@ def on_connect():
     count_players += 1
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
+    socket.emit("update_info")
 
 
 @socket.on("disconnect")
@@ -150,7 +166,6 @@ def on_move(data):
         players[request.sid]["x"] = data["x"]
         players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
-        print(players)
 
 
 socket.run(app, debug=True)
