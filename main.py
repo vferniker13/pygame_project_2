@@ -19,11 +19,10 @@ login_manager.login_view = "login"
 socket = SocketIO(app)
 login_manager.init_app(app)
 players = {}
-users = {}
 count_players = 0
-hanter_chosen = False
 MAX_HUNTER = 1
-is_hunter = False
+info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
+
 
 def get_db():
     db = db_session.SessionLocal()
@@ -103,25 +102,29 @@ def profile():
 
 @app.route("/select/hunter/<sid>")
 def become_hunter(sid: str):
-    global players, is_hunter
-    if is_hunter == False:
+    global players, info
+    if info["total_hunters"] < info["max_hunters"]:
         players[sid]["role"] = "hunter"
         socket.emit("update_all", players)
-        socket.emit("update_info")
-        is_hunter = True
+        info["total_hunters"] += 1
+        info["total_survivors"] = len(players) -  1
+        socket.emit("update_info", info)
         return {"status": 200}
     return {"status": 403}
 
 
 @app.route("/select/survivor/<sid>")
 def become_survivor(sid: str):
-    global players, is_hunter
-    if players[sid]["role"] == "hunter":
-        is_hunter = False
-    players[sid]["role"] = "survivor"
-    socket.emit("update_all", players)
-    socket.emit("update_info")
-    return {"status": 200}
+    global players, info
+    if players[sid]["role"] == "hunter" and info["total_hunters"] > 0:
+        info["total_hunters"] -= 1
+    if players[sid]["role"] != "survivor":
+        players[sid]["role"] = "survivor"
+        info["total_survivors"] += 1
+        socket.emit("update_all", players)
+        socket.emit("update_info", info)
+        return {"status": 200}
+    return {"status": 403}
 
 
 @socket.on("connect")
@@ -142,12 +145,15 @@ def on_connect():
     count_players += 1
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
-    socket.emit("update_info")
+    socket.emit("update_info", info)
 
 
 @socket.on("disconnect")
 def on_disconnect():
     global players, count_players
+    if players[request.sid]["role"] == "hunter":
+        info["total_hunters"] -= 1
+        players[request.sid]["role"] == "survivors"
     players.pop(request.sid, None)
     count_players -= 1
     socket.emit("update_all", players)

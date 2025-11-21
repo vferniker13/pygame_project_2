@@ -1,10 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Игра{% endblock %}
 {% block content %}
+    <div class="row">
+        <div class="col-12 d-flex justify-content-center">
+            <p id="hunters" class="mx-2"> </p>
+            <p id="survivors" class="mx-2"></p>
+        </div>
+    </div>
     {% if user.is_anonymous == False %}
-    <div class="text-center m-3">
-     <button type="join_to_hunter" class="btn btn-danger" id="hunter">Войти за охотника</button>
-     <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
+    <div class="row mt-3">
+        <div class="col-12 text-center m-3">
+            <button type="join_to_hunter" class="btn btn-danger" id="hunter">Войти за охотника</button>
+            <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
+        </div>
     </div>
     {% endif %}
     <canvas width="800" height="800" id="game"></canvas>
@@ -27,7 +35,11 @@
 
         survivor_btn.onclick = function() {
             fetch("/select/survivor/" + mySid).then(response => {
-                return
+                return response.json()
+            }).then(data => {
+                if (data["status"] == 403) {
+                    alert("Вы уже выживший!")
+                }
             })
         };
 
@@ -41,6 +53,7 @@
             const speedy = 10;
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let hunter = null;
                 for (let id in players) {
                     let player = players[id];
                     ctx.beginPath();
@@ -51,7 +64,18 @@
                     ctx.fillText(player["role"], player.x, player.y - 12, 20)
                     ctx.fillStyle = player["color"]
                     ctx.fill();  
+                    if (player["role"] == "hunter") {
+                        hunter = id;
+                    }
                 };
+                if (mySid == hunter) {
+                    let hunter_player = players[hunter];
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fiilStyle = 'white'
+                    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2)
+                    ctx.fill();
+                }
             };
 
             document.onkeydown = function(e) {
@@ -77,10 +101,16 @@
             socket.on('ur_sid', function(data) {
                 mySid = data.id;
             })
-             socket.on('update_all', function(data){
+            socket.on('update_all', function(data){
                 players = data;
-                draw();
+                draw()
             });
+            socket.on('update_info',function(data){
+                let hunter_paragraph = document.getElementById("hunters")
+                let survivors_paragraph = document.getElementById("survivors")
+                hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
+                survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
+            })
             window.addEventListener('beforeunload', function(e) {
                 socket.disconnect();
             })
