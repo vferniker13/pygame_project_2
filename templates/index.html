@@ -53,28 +53,34 @@
             const speedy = 10;
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let hunter = null;
+                let hunter = players.hunter;
                 for (let id in players) {
-                    let player = players[id];
-                    ctx.beginPath();
-                    ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
-                    ctx.font = "9px serif";
-                    ctx.fillStyle = "black";
-                    ctx.textAlign = "center";
-                    ctx.fillText(player["role"], player.x, player.y - 12, 20)
-                    ctx.fillStyle = player["color"]
-                    ctx.fill();  
-                    if (player["role"] == "hunter") {
-                        hunter = id;
+                    if (players[id] && typeof(players[id] != "string")) {
+                        let player = players[id];
+                        if (id != hunter && hunter == mySid) {
+                            let distance = Math.sqrt(
+                                Math.pow(player.x - players[mySid].x, 2) +
+                                Math.pow(player.y - players[mySid].y, 2)
+                            );
+                            if (distance > 150) continue; 
+                        }
+                        ctx.beginPath();
+                        ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+                        ctx.font = "9px serif";
+                        ctx.fillStyle = "black";
+                        ctx.textAlign = "center";
+                        ctx.fillText(player["role"], player.x, player.y - 12, 20)
+                        ctx.fillStyle = player["color"]
+                        ctx.fill();
                     }
                 };
                 if (mySid == hunter) {
-                    let hunter_player = players[hunter];
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fiilStyle = 'white'
-                    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2)
-                    ctx.fill();
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle('black');
+                    ctx.fill(); 
+                    ctx.restore();   
                 }
             };
 

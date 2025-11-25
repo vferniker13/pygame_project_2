@@ -18,7 +18,7 @@ login_manager = LoginManager()
 login_manager.login_view = "login"
 socket = SocketIO(app)
 login_manager.init_app(app)
-players = {}
+players = {"hunter": None}
 count_players = 0
 MAX_HUNTER = 1
 info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
@@ -107,7 +107,8 @@ def become_hunter(sid: str):
         players[sid]["role"] = "hunter"
         socket.emit("update_all", players)
         info["total_hunters"] += 1
-        info["total_survivors"] = len(players) -  1
+        info["total_survivors"] = len(players) - 1
+        players["hunter"] = sid
         socket.emit("update_info", info)
         return {"status": 200}
     return {"status": 403}
@@ -117,6 +118,7 @@ def become_hunter(sid: str):
 def become_survivor(sid: str):
     global players, info
     if players[sid]["role"] == "hunter" and info["total_hunters"] > 0:
+        players["hunter"] = None
         info["total_hunters"] -= 1
     if players[sid]["role"] != "survivor":
         players[sid]["role"] = "survivor"
