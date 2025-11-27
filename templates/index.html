@@ -54,6 +54,23 @@
             function draw() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 let hunter = players.hunter;
+                if (mySid == hunter && players["hunter"]) {
+                    ctx.save();
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalCompositeOperation = 'destination-out'; // source-over
+                    ctx.beginPath();
+                    ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.beginPath();
+                    ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();   
+                }
                 for (let id in players) {
                     if (players[id] && typeof(players[id] != "string")) {
                         let player = players[id];
@@ -64,26 +81,55 @@
                             );
                             if (distance > 150) continue; 
                         }
+                        if (!players[id].is_alive) continue;
                         ctx.beginPath();
                         ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
                         ctx.font = "9px serif";
                         ctx.fillStyle = "black";
                         ctx.textAlign = "center";
-                        ctx.fillText(player["role"], player.x, player.y - 12, 20)
+                        ctx.fillText(player["username"], player.x, player.y - 12, 20)
                         ctx.fillStyle = player["color"]
                         ctx.fill();
                     }
                 };
-                if (mySid == hunter) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle('black');
-                    ctx.fill(); 
-                    ctx.restore();   
-                }
             };
+            canvas.addEventListener("click", function(event) {
+                let hunter = players.hunter;
+                if (mySid != hunter) return;
+                const rect = canvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+                for (let id in players) {
+                    if (players[id] && typeof(players[id]) != "string" && id != hunter) {
+                        let player = players[id];
+                        let distanceToPlayer = Math.sqrt(
+                            Math.pow(player.x - hunter.x, 2) + 
+                            Math.pow(player.y - hunter.y, 2)
+                        );
+                        if (distanceToPlayer > 150) continue;
+                        let distanceToClick = Math.sqrt(
+                            Math.pow(player.x - clickX, 2) +
+                            Math.pow(player.y - clickY, 2)
+                        );
+                        if (distanceToClick <= 10) {
+                            socket.emit("kill", {target_id: id});
+                            showHitEffect(player.x, player.y);
+                            return;
+                        }
+                    }
+                }
+            })
+            function showHitEffect(x, y) {
+                ctx.save();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
 
+                setTimeout(draw, 500);
+            };
             document.onkeydown = function(e) {
                 if (!mySid) {
                     return;
@@ -107,10 +153,22 @@
             socket.on('ur_sid', function(data) {
                 mySid = data.id;
             })
+            socket.on('kill_signal', function(data) {
+                if (mySid == data.target_id) {
+                    alert("Вы стали жертвой охотника!");
+                }
+            })
+            socket.on('hunter_win', function() {
+                alert('Выживших нет, охотник победил!');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            })
             socket.on('update_all', function(data){
                 players = data;
                 draw()
             });
+
             socket.on('update_info',function(data){
                 let hunter_paragraph = document.getElementById("hunters")
                 let survivors_paragraph = document.getElementById("survivors")

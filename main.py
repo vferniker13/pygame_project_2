@@ -141,13 +141,24 @@ def on_connect():
         "y": randint(0, 750),
         "color": generate_random_color(),
         "role": "survivor",
+        "is_alive": True,
     }
     if current_user.is_anonymous == False:
         players[request.sid]["color"] = current_user.color
-    count_players += 1
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
     socket.emit("update_info", info)
+
+
+@socket.on("kill")
+def kill_player(data):
+    global players
+    if players[data["target_id"]] != players["hunter"]:
+        players[data["target_id"]] = False
+        info["total_survivors"] -= 1
+        socket.emit("kill_signal", data)
+        check_game_end()
+    socket.emit("update_all", players)
 
 
 @socket.on("disconnect")
@@ -174,6 +185,11 @@ def on_move(data):
         players[request.sid]["x"] = data["x"]
         players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
+
+
+def check_game_end():
+    if info["total_survivors"] == 0:
+        socket.emit("hunter_win")
 
 
 socket.run(app, debug=True)
