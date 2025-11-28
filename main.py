@@ -19,7 +19,6 @@ login_manager.login_view = "login"
 socket = SocketIO(app)
 login_manager.init_app(app)
 players = {"hunter": None}
-count_players = 0
 MAX_HUNTER = 1
 info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
 
@@ -104,13 +103,16 @@ def profile():
 def become_hunter(sid: str):
     global players, info
     if info["total_hunters"] < info["max_hunters"]:
-        players[sid]["role"] = "hunter"
-        socket.emit("update_all", players)
-        info["total_hunters"] += 1
-        info["total_survivors"] = len(players) - 1
-        players["hunter"] = sid
-        socket.emit("update_info", info)
-        return {"status": 200}
+        if current_user.is_anonymous == False:
+            players[sid]["role"] = "hunter"
+            socket.emit("update_all", players)
+            info["total_hunters"] += 1
+            info["total_survivors"] -= 1
+            players["hunter"] = sid
+            socket.emit("update_info", info)
+            return {"status": 200}
+        else:
+            return {"status": 401}
     return {"status": 403}
 
 
@@ -131,8 +133,8 @@ def become_survivor(sid: str):
 
 @socket.on("connect")
 def on_connect():
-    global players, count_players
-    username = f"Гость{count_players}"
+    global players, info
+    username = f"Гость{info['total_survivors'] + info['total_hunters']}"
     if current_user.is_anonymous == False:
         username = current_user.username
     players[request.sid] = {
@@ -143,6 +145,7 @@ def on_connect():
         "role": "survivor",
         "is_alive": True,
     }
+    info["total_survivors"] += 1
     if current_user.is_anonymous == False:
         players[request.sid]["color"] = current_user.color
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
@@ -151,25 +154,28 @@ def on_connect():
 
 
 @socket.on("kill")
-def kill_player(data):
-    global players
+def kill_player(data: dict):
+    global players, info
     if players[data["target_id"]] != players["hunter"]:
         players[data["target_id"]] = False
         info["total_survivors"] -= 1
         socket.emit("kill_signal", data)
-        check_game_end()
+        socket.emit("update_info", info)
+    check_game_end()
     socket.emit("update_all", players)
 
 
 @socket.on("disconnect")
 def on_disconnect():
-    global players, count_players
+    global players, info
     if players[request.sid]["role"] == "hunter":
         info["total_hunters"] -= 1
-        players[request.sid]["role"] == "survivors"
+    else:
+        info["total_survivors"] -= 1
+    players[request.sid]["role"] = "survivors"
     players.pop(request.sid, None)
-    count_players -= 1
     socket.emit("update_all", players)
+    socket.emit("update_info", info)
 
 
 @app.route("/logout")
@@ -180,7 +186,7 @@ def logout():
 
 
 @socket.on("move")
-def on_move(data):
+def on_move(data: dict):
     if request.sid in players:
         players[request.sid]["x"] = data["x"]
         players[request.sid]["y"] = data["y"]
@@ -188,6 +194,7 @@ def on_move(data):
 
 
 def check_game_end():
+    global info
     if info["total_survivors"] == 0:
         socket.emit("hunter_win")
 

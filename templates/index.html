@@ -1,183 +1,237 @@
 {% extends "base.html" %}
 {% block title %}Игра{% endblock %}
 {% block content %}
-    <div class="row">
-        <div class="col-12 d-flex justify-content-center">
-            <p id="hunters" class="mx-2"> </p>
-            <p id="survivors" class="mx-2"></p>
-        </div>
+<div class="row">
+    <div class="col-12 d-flex justify-content-center">
+        <p id="hunters" class="mx-2"> </p>
+        <p id="survivors" class="mx-2"></p>
     </div>
-    {% if user.is_anonymous == False %}
-    <div class="row mt-3">
-        <div class="col-12 text-center m-3">
-            <button type="join_to_hunter" class="btn btn-danger" id="hunter">Войти за охотника</button>
-            <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
-        </div>
+</div>
+<div class="row mt-3">
+    <div class="col-12 text-center m-3">
+        <button type="join_to_hunter" class="btn btn-danger" id="hunter">Войти за охотника</button>
+        <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
     </div>
-    {% endif %}
-    <canvas width="800" height="800" id="game"></canvas>
+</div>
+<div id="joystick" style="display:none;">
+    <div id="joystick-base"></div>
+    <div id="joystick-stick"></div>
+</div>
+<canvas width="800" height="800" id="game"></canvas>
 {% endblock %}
 {% block script %}
-    <script>
-        var mySid = null;
-        var hunter_btn = document.getElementById("hunter");
+<script>
+    var mySid = null;
+    var hunter_btn = document.getElementById("hunter");
+    const isSensor = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    var obstacles = [];
+    function generateObstacles(count) {
+        const obstacle = {
+            x: Math.random() * (canvas.width - 100) + 50,
+            y: Math.random() * (canvas.height - 100) + 50,
+            width: Math.random() * 60 + 40,
+            height: Math.random() * 60 + 40,
+            type: Math.random() > 0.5 ? 'rect': 'circle'
+        }
+        let overlapse = false;
+    };
 
-        hunter_btn.onclick = function() {
-            fetch("/select/hunter/" + mySid).then(response => {
-                return response.json();
-            }).then(data => {
-                if (data["status"] == 403) {
-                    alert("Охотник уже выбран!")
-                }
-            })
-        };
-        var survivor_btn = document.getElementById("survivor");
+    hunter_btn.onclick = function () {
+        fetch("/select/hunter/" + mySid).then(response => {
+            return response.json();
+        }).then(data => {
+            if (data["status"] == 403) {
+                alert("Охотник уже выбран!");
+            }
+            if (data["status"] == 401) {
+                alert("нужно зарегистрироваться!");
+            }
+        })
+    };
+    var survivor_btn = document.getElementById("survivor");
 
-        survivor_btn.onclick = function() {
-            fetch("/select/survivor/" + mySid).then(response => {
-                return response.json()
-            }).then(data => {
-                if (data["status"] == 403) {
-                    alert("Вы уже выживший!")
-                }
-            })
-        };
+    survivor_btn.onclick = function () {
+        fetch("/select/survivor/" + mySid).then(response => {
+            return response.json()
+        }).then(data => {
+            if (data["status"] == 403) {
+                alert("Вы уже выживший!");
+            }
+        })
+    };
 
-        document.addEventListener("DOMContentLoaded", function() {
-            var socket = io();
-            const canvas = document.getElementById('game');
-            const ctx = canvas.getContext('2d');
-            var players = {};
-            
-            const speedx = 10;
-            const speedy = 10;
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let hunter = players.hunter;
-                if (mySid == hunter && players["hunter"]) {
-                    ctx.save();
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.globalCompositeOperation = 'destination-out'; // source-over
-                    ctx.beginPath();
-                    ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
-                    ctx.fillStyle = 'white';
-                    ctx.fill();
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.beginPath();
-                    ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    ctx.restore();   
-                }
-                for (let id in players) {
-                    if (players[id] && typeof(players[id] != "string")) {
-                        let player = players[id];
-                        if (id != hunter && hunter == mySid) {
-                            let distance = Math.sqrt(
-                                Math.pow(player.x - players[mySid].x, 2) +
-                                Math.pow(player.y - players[mySid].y, 2)
-                            );
-                            if (distance > 150) continue; 
-                        }
-                        if (!players[id].is_alive) continue;
-                        ctx.beginPath();
-                        ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
-                        ctx.font = "9px serif";
-                        ctx.fillStyle = "black";
-                        ctx.textAlign = "center";
-                        ctx.fillText(player["username"], player.x, player.y - 12, 20)
-                        ctx.fillStyle = player["color"]
-                        ctx.fill();
-                    }
-                };
-            };
-            canvas.addEventListener("click", function(event) {
-                let hunter = players.hunter;
-                if (mySid != hunter) return;
-                const rect = canvas.getBoundingClientRect();
-                const clickX = event.clientX - rect.left;
-                const clickY = event.clientY - rect.top;
-                for (let id in players) {
-                    if (players[id] && typeof(players[id]) != "string" && id != hunter) {
-                        let player = players[id];
-                        let distanceToPlayer = Math.sqrt(
-                            Math.pow(player.x - hunter.x, 2) + 
-                            Math.pow(player.y - hunter.y, 2)
-                        );
-                        if (distanceToPlayer > 150) continue;
-                        let distanceToClick = Math.sqrt(
-                            Math.pow(player.x - clickX, 2) +
-                            Math.pow(player.y - clickY, 2)
-                        );
-                        if (distanceToClick <= 10) {
-                            socket.emit("kill", {target_id: id});
-                            showHitEffect(player.x, player.y);
-                            return;
-                        }
-                    }
-                }
-            })
-            function showHitEffect(x, y) {
+    document.addEventListener("DOMContentLoaded", function () {
+        var socket = io();
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        var players = {};
+
+        const speedx = 10;
+        const speedy = 10;
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let hunter = players.hunter;
+            if (mySid == hunter && players["hunter"]) {
                 ctx.save();
-                ctx.strokeStyle = 'red';
-                ctx.lineWidth = 4;
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'destination-out'; // source-over
                 ctx.beginPath();
-                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.beginPath();
+                ctx.arc(players[hunter].x, players[hunter].y, 150, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
                 ctx.stroke();
                 ctx.restore();
-
-                setTimeout(draw, 500);
+            }
+            for (let id in players) {
+                if (players[id] && typeof (players[id] != "string")) {
+                    let player = players[id];
+                    if (id != hunter && hunter == mySid) {
+                        let distance = Math.sqrt(
+                            Math.pow(player.x - players[mySid].x, 2) +
+                            Math.pow(player.y - players[mySid].y, 2)
+                        );
+                        if (distance > 150) continue;
+                    }
+                    if (!players[id].is_alive) continue;
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+                    ctx.font = "9px serif";
+                    ctx.fillStyle = "black";
+                    ctx.textAlign = "center";
+                    ctx.fillText(player["username"], player.x, player.y - 12, 20)
+                    ctx.fillStyle = player["color"]
+                    ctx.fill();
+                }
             };
-            document.onkeydown = function(e) {
-                if (!mySid) {
-                    return;
+        };
+        canvas.addEventListener("click", function (event) {
+            let hunter = players.hunter;
+            if (mySid != hunter) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            for (let id in players) {
+                if (players[id] && typeof (players[id]) != "string" && id != hunter) {
+                    let player = players[id];
+                    let distanceToPlayer = Math.sqrt(
+                        Math.pow(player.x - hunter.x, 2) +
+                        Math.pow(player.y - hunter.y, 2)
+                    );
+                    if (distanceToPlayer > 150) continue;
+                    let distanceToClick = Math.sqrt(
+                        Math.pow(player.x - clickX, 2) +
+                        Math.pow(player.y - clickY, 2)
+                    );
+                    if (distanceToClick <= 10) {
+                        socket.emit("kill", { target_id: id });
+                        showHitEffect(player.x, player.y);
+                        return;
+                    }
                 }
-                let me = players[mySid];
-                if (e.key == 'w' || e.key == 'ц') {
-                    me.y -= 10;
-                }
-                if (e.key === 's' || e.key === 'ы') {
-                    me.y += 10;
-                }
-                if (e.key === 'd' || e.key === 'в') {
-                    me.x += 10;
-                }
-                if (e.key === 'a' || e.key === 'ф') {
-                    me.x -= 10;
-                }
-                socket.emit('move', {x: me.x, y: me.y});
-            };
+            }
+        })
+        function showHitEffect(x, y) {
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
 
-            socket.on('ur_sid', function(data) {
-                mySid = data.id;
-            })
-            socket.on('kill_signal', function(data) {
-                if (mySid == data.target_id) {
-                    alert("Вы стали жертвой охотника!");
-                }
-            })
-            socket.on('hunter_win', function() {
+            setTimeout(draw, 500);
+        };
+        document.onkeydown = function (e) {
+            if (!mySid) {
+                return;
+            }
+            let me = players[mySid];
+            if (e.key == 'w' || e.key == 'ц') {
+                me.y -= 10;
+            }
+            if (e.key === 's' || e.key === 'ы') {
+                me.y += 10;
+            }
+            if (e.key === 'd' || e.key === 'в') {
+                me.x += 10;
+            }
+            if (e.key === 'a' || e.key === 'ф') {
+                me.x -= 10;
+            }
+            socket.emit('move', { x: me.x, y: me.y });
+        };
+
+        socket.on('ur_sid', function (data) {
+            mySid = data.id;
+        })
+        socket.on('kill_signal', function (data) {
+            if (mySid == data.target_id) {
+                alert("Вы стали жертвой охотника!");
+            }
+        })
+        socket.on('hunter_win', function () {
+            setTimeout(function () {
                 alert('Выживших нет, охотник победил!');
-                setTimeout(function() {
-                    location.reload();
-                }, 2000);
-            })
-            socket.on('update_all', function(data){
-                players = data;
-                draw()
-            });
-
-            socket.on('update_info',function(data){
-                let hunter_paragraph = document.getElementById("hunters")
-                let survivors_paragraph = document.getElementById("survivors")
-                hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
-                survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
-            })
-            window.addEventListener('beforeunload', function(e) {
-                socket.disconnect();
-            })
+                location.reload();
+            }, 2000);
+        })
+        socket.on('update_all', function (data) {
+            players = data;
+            draw()
         });
-    </script>
+
+        socket.on('update_info', function (data) {
+            let hunter_paragraph = document.getElementById("hunters")
+            let survivors_paragraph = document.getElementById("survivors")
+            hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
+            survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
+        })
+        window.addEventListener('beforeunload', function (e) {
+            socket.disconnect();
+        })
+    });
+</script>
+<style>
+    #joystick {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        width: 120px;
+        height: 120px;
+        z-index: 100;
+    }
+
+    #joystick-base {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+    }
+
+    #joystick-stick {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.7);
+        left: 35px;
+        top: 35px;
+        transition: all 0.1s;
+    }
+
+    /* Скрываем джойстик на десктопе */
+    @media (min-width: 768px) {
+        #joystick {
+            display: none !important;
+        }
+    }
+</style>
 {% endblock %}
