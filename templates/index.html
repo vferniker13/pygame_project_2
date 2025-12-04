@@ -65,6 +65,7 @@
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         var players = {};
+        var walls = {}
 
         const speedx = 10;
         const speedy = 10;
@@ -109,6 +110,20 @@
                     ctx.fill();
                 }
             };
+            for (let wall_num in walls) {
+                let wall = walls[wall_num];
+                if (hunter == mySid && players["hunter"]) {
+                    let distance = Math.sqrt(
+                        Math.pow(wall[0] - players[mySid].x, 2) +
+                        Math.pow(wall[1] - players[mySid].y, 2)
+                    );
+                    if (distance > 150) continue;
+                }
+                ctx.beginPath();
+                ctx.fillStyle = "red";
+                ctx.fillRect(wall[0], wall[1], 15, 30);
+                ctx.fill();
+            } 
         };
         canvas.addEventListener("click", function (event) {
             let hunter = players.hunter;
@@ -185,6 +200,11 @@
             players = data;
             draw()
         });
+        socket.on('update_walls',function (data) {
+            walls = data;
+            draw()
+        });
+        
 
         socket.on('update_info', function (data) {
             let hunter_paragraph = document.getElementById("hunters")

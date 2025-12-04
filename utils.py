@@ -43,6 +43,14 @@ def is_overlapping(
     return False
 
 
+def is_obstacle_in_the_way(walls: dict, new_x: int, new_y: int) -> bool:
+    for i in walls:
+        wall = walls.get(i)
+        if wall[0] <= new_x <= wall[0] + 15 or wall[1] <= new_y <= wall[1] + 30:
+            return True
+    return False
+
+
 def generate_walls(amount: int) -> dict:
     old_walls = {}
     max_attempts = 100

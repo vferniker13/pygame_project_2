@@ -9,11 +9,28 @@ from flask_login import (
 )
 from random import randint
 from models.models import User
-from utils import hash_password, verify_password, generate_random_color
+from utils import (
+    hash_password,
+    verify_password,
+    generate_random_color,
+    generate_walls,
+    is_obstacle_in_the_way,
+)
 import db_session
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "example"
+
+walls = {}
+
+
+def on_startup():
+    global walls
+    app = Flask(__name__)
+    walls = generate_walls(10)
+    app.config["SECRET_KEY"] = "example"
+    return app
+
+
+app = on_startup()
 login_manager = LoginManager()
 login_manager.login_view = "login"
 socket = SocketIO(app)
@@ -133,7 +150,7 @@ def become_survivor(sid: str):
 
 @socket.on("connect")
 def on_connect():
-    global players, info
+    global players, info, walls
     username = f"Гость{info['total_survivors'] + info['total_hunters']}"
     if current_user.is_anonymous == False:
         username = current_user.username
@@ -150,6 +167,7 @@ def on_connect():
         players[request.sid]["color"] = current_user.color
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
+    socket.emit("update_walls", walls)
     socket.emit("update_info", info)
 
 
@@ -187,9 +205,11 @@ def logout():
 
 @socket.on("move")
 def on_move(data: dict):
+    global walls
     if request.sid in players:
-        players[request.sid]["x"] = data["x"]
-        players[request.sid]["y"] = data["y"]
+        if not is_obstacle_in_the_way(walls, data["x"], data["y"]):
+            players[request.sid]["x"] = data["x"]
+            players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
 
 
