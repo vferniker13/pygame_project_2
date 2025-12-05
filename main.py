@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect
 from flask_socketio import SocketIO
+import math
 from flask_login import (
     LoginManager,
     login_user,
@@ -211,6 +212,31 @@ def on_move(data: dict):
             players[request.sid]["x"] = data["x"]
             players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
+
+
+@socket.on("check_shot")
+def on_shot(data: dict):
+    global players
+    #shot_line = 
+    for wall in walls:
+        
+    for id in players:
+        if players[id] and not isinstance(players[id], str) and id != players["hunter"]:
+            player = players[id]
+            distanceToPlayer = math.sqrt(
+                player["x"]
+                - players["hunter"]["x"] ** 2
+                + player["y"]
+                - players["hunter"]["y"] ** 2
+            )
+            if distanceToPlayer > 150:
+                continue
+            distanceToClick = math.sqrt(
+                player.x - data["shot_x"] ** 2 + player.y - data["shot_y"] ** 2
+            )
+            if distanceToClick <= 10:
+                # showHitEffect(player.x, player.y)
+                return
 
 
 def check_game_end():

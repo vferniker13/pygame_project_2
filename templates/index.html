@@ -131,7 +131,8 @@
             const rect = canvas.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
             const clickY = event.clientY - rect.top;
-            for (let id in players) {
+            socket.emit("check_shot", { shot_x : clickX, shot_y : clickY });
+            /*for (let id in players) {
                 if (players[id] && typeof (players[id]) != "string" && id != hunter) {
                     let player = players[id];
                     let distanceToPlayer = Math.sqrt(
@@ -149,7 +150,7 @@
                         return;
                     }
                 }
-            }
+            }*/
         })
         function showHitEffect(x, y) {
             ctx.save();
