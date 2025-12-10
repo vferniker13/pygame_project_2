@@ -80,7 +80,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def is_wall_in_the_line(begin_point: list[int], end_point: list[int], wall: list[int]):
+def is_wall_on_the_line(begin_point: list[int], end_point: list[int], wall: list[int]):
     if (
         max(begin_point[0], end_point[0]) < wall[0]
         or min(begin_point[0], end_point[0]) > wall[0] + 15
@@ -103,7 +103,6 @@ def is_wall_in_the_line(begin_point: list[int], end_point: list[int], wall: list
         sign(wall[0] + 15, wall[1] + 30),
         sign(wall[0], wall[1] + 30)
     ]
-
     has_positive = any(c > 0 for c in corners)
     has_negative = any(c < 0 for c in corners)
     return has_positive and has_negative

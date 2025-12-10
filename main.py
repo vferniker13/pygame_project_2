@@ -16,6 +16,7 @@ from utils import (
     generate_random_color,
     generate_walls,
     is_obstacle_in_the_way,
+    is_wall_on_the_line,
 )
 import db_session
 
@@ -176,7 +177,7 @@ def on_connect():
 def kill_player(data: dict):
     global players, info
     if players[data["target_id"]] != players["hunter"]:
-        players[data["target_id"]] = False
+        players[data["target_id"]]["is_alive"] = False
         info["total_survivors"] -= 1
         socket.emit("kill_signal", data)
         socket.emit("update_info", info)
@@ -191,7 +192,7 @@ def on_disconnect():
         info["total_hunters"] -= 1
     else:
         info["total_survivors"] -= 1
-    players[request.sid]["role"] = "survivors"
+    players[request.sid]["role"] = "survivor"
     players.pop(request.sid, None)
     socket.emit("update_all", players)
     socket.emit("update_info", info)
@@ -217,17 +218,18 @@ def on_move(data: dict):
 @socket.on("check_shot")
 def on_shot(data: dict):
     global players
-    #shot_line = 
     for wall in walls:
-        
+        data_end = [data["shot_x"], data["shot_y"]]
+        hunter = [players["hunter"]["x"], players["hunter"]["y"]]
+        wall = walls.get(wall)
+        if is_wall_on_the_line(hunter, data_end, wall):
+            return
     for id in players:
         if players[id] and not isinstance(players[id], str) and id != players["hunter"]:
             player = players[id]
             distanceToPlayer = math.sqrt(
-                player["x"]
-                - players["hunter"]["x"] ** 2
-                + player["y"]
-                - players["hunter"]["y"] ** 2
+                (player["x"] - players["hunter"]["x"]) ** 2
+                + (player["y"] - players["hunter"]["y"]) ** 2
             )
             if distanceToPlayer > 150:
                 continue
@@ -235,7 +237,7 @@ def on_shot(data: dict):
                 player.x - data["shot_x"] ** 2 + player.y - data["shot_y"] ** 2
             )
             if distanceToClick <= 10:
-                # showHitEffect(player.x, player.y)
+                socket.emit("show_hit_effect", {"x": player["x"], "y": player["y"]})
                 return
 
 
