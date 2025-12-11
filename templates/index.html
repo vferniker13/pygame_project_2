@@ -152,17 +152,6 @@
                 }
             }*/
         })
-        function showHitEffect(x, y) {
-            ctx.save();
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(x, y, 15, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
-
-            setTimeout(draw, 500);
-        };
         document.onkeydown = function (e) {
             if (!mySid) {
                 return;
@@ -182,7 +171,19 @@
             }
             socket.emit('move', { x: me.x, y: me.y });
         };
-
+        socket.on('show_hit', function(data) {
+            if (mySid == data.id) {
+                socket.emit("kill", { target_id: data.id });
+            }
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(data.x, data.y, 15, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            setTimeout(draw, 500);
+        });
         socket.on('ur_sid', function (data) {
             mySid = data.id;
         })

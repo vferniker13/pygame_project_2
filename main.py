@@ -220,7 +220,7 @@ def on_shot(data: dict):
     global players
     for wall in walls:
         data_end = [data["shot_x"], data["shot_y"]]
-        hunter = [players["hunter"]["x"], players["hunter"]["y"]]
+        hunter = [players[players["hunter"]]["x"], players[players["hunter"]]["y"]]
         wall = walls.get(wall)
         if is_wall_on_the_line(hunter, data_end, wall):
             return
@@ -228,22 +228,31 @@ def on_shot(data: dict):
         if players[id] and not isinstance(players[id], str) and id != players["hunter"]:
             player = players[id]
             distanceToPlayer = math.sqrt(
-                (player["x"] - players["hunter"]["x"]) ** 2
-                + (player["y"] - players["hunter"]["y"]) ** 2
+                (player["x"] - players[players["hunter"]]["x"]) ** 2
+                + (player["y"] - players[players["hunter"]]["y"]) ** 2
             )
             if distanceToPlayer > 150:
                 continue
             distanceToClick = math.sqrt(
-                player.x - data["shot_x"] ** 2 + player.y - data["shot_y"] ** 2
+                (player["x"] - data["shot_x"]) ** 2 + (player["y"] - data["shot_y"]) ** 2
             )
             if distanceToClick <= 10:
-                socket.emit("show_hit_effect", {"x": player["x"], "y": player["y"]})
+                socket.emit("show_hit", {"x": player["x"], "y": player["y"],"id":id})
                 return
 
 
 def check_game_end():
     global info
     if info["total_survivors"] == 0:
+        for i in players:
+            if players["hunter"] == i:
+                players[i]["role"] = "survivor"
+                info["total_hunters"] -= 1
+                info["total_survivors"] += 1
+            elif players["hunter"] != i and not players[i]["is_alive"]:
+                players[i]["is_alive"] = True
+                info["total_survivors"] += 1
+        socket.emit("update_info")
         socket.emit("hunter_win")
 
 
