@@ -209,7 +209,7 @@ def logout():
 def on_move(data: dict):
     global walls
     if request.sid in players:
-        if not is_obstacle_in_the_way(walls, data["x"], data["y"]):
+        if not is_obstacle_in_the_way(walls, data["x"], data["y"]) and data["x"] + 10 < 800 and data["x"] - 10 > 0 and data["y"] + 10 < 800 and data["y"] - 10 > 0:
             players[request.sid]["x"] = data["x"]
             players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
@@ -244,16 +244,17 @@ def on_shot(data: dict):
 def check_game_end():
     global info
     if info["total_survivors"] == 0:
+        players[players["hunter"]]["role"] = "survivor"
+        players["hunter"] = None
+        info["total_hunters"] -= 1
+        info["total_survivors"] += 1
         for i in players:
-            if players["hunter"] == i:
-                players[i]["role"] = "survivor"
-                info["total_hunters"] -= 1
-                info["total_survivors"] += 1
-            elif players["hunter"] != i and not players[i]["is_alive"]:
+            if i != "hunter" and not players[i]["is_alive"]:
                 players[i]["is_alive"] = True
                 info["total_survivors"] += 1
-        socket.emit("update_info")
-        socket.emit("hunter_win")
+        print(players)
+        socket.emit("hunter_win", info)
+        socket.emit("update_all")
 
 
 socket.run(app, debug=True)

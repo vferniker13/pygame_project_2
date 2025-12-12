@@ -132,25 +132,6 @@
             const clickX = event.clientX - rect.left;
             const clickY = event.clientY - rect.top;
             socket.emit("check_shot", { shot_x : clickX, shot_y : clickY });
-            /*for (let id in players) {
-                if (players[id] && typeof (players[id]) != "string" && id != hunter) {
-                    let player = players[id];
-                    let distanceToPlayer = Math.sqrt(
-                        Math.pow(player.x - hunter.x, 2) +
-                        Math.pow(player.y - hunter.y, 2)
-                    );
-                    if (distanceToPlayer > 150) continue;
-                    let distanceToClick = Math.sqrt(
-                        Math.pow(player.x - clickX, 2) +
-                        Math.pow(player.y - clickY, 2)
-                    );
-                    if (distanceToClick <= 10) {
-                        socket.emit("kill", { target_id: id });
-                        showHitEffect(player.x, player.y);
-                        return;
-                    }
-                }
-            }*/
         })
         document.onkeydown = function (e) {
             if (!mySid) {
@@ -184,6 +165,14 @@
             ctx.restore();
             setTimeout(draw, 500);
         });
+
+        function UpdateInfo (data) {
+            let hunter_paragraph = document.getElementById("hunters")
+            let survivors_paragraph = document.getElementById("survivors")
+            hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
+            survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
+        }
+
         socket.on('ur_sid', function (data) {
             mySid = data.id;
         })
@@ -192,11 +181,9 @@
                 alert("Вы стали жертвой охотника!");
             }
         })
-        socket.on('hunter_win', function () {
-            setTimeout(function () {
-                alert('Выживших нет, охотник победил!');
-                location.reload();
-            }, 2000);
+        socket.on('hunter_win', function (data) {
+            UpdateInfo(data);
+            alert('Выживших нет, охотник победил!');
         })
         socket.on('update_all', function (data) {
             players = data;
@@ -208,11 +195,8 @@
         });
         
 
-        socket.on('update_info', function (data) {
-            let hunter_paragraph = document.getElementById("hunters")
-            let survivors_paragraph = document.getElementById("survivors")
-            hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
-            survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
+        socket.on('update_info', function(data) {
+            UpdateInfo(data);
         })
         window.addEventListener('beforeunload', function (e) {
             socket.disconnect();
