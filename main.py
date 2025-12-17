@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect
 from flask_socketio import SocketIO
 import math
+import threading
+import time
 from flask_login import (
     LoginManager,
     login_user,
@@ -20,9 +22,8 @@ from utils import (
 )
 import db_session
 
-
 walls = {}
-
+final = None
 
 def on_startup():
     global walls
@@ -48,6 +49,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def wait_to_game():
+    global final
+    time.sleep(10)
+    final = time.time() + 180
+    socket.emit("start_game_timer", {"end_time": final})
+
+
+def game_timer():
+    seconds = 180
+    socket.emit("update_timer", {"seconds": seconds})
+    time.sleep(1)
+    seconds -= 1
 
 
 @login_manager.user_loader
@@ -129,6 +144,8 @@ def become_hunter(sid: str):
             info["total_survivors"] -= 1
             players["hunter"] = sid
             socket.emit("update_info", info)
+            thread = threading.Thread(target=wait_to_game)
+            thread.start()
             return {"status": 200}
         else:
             return {"status": 401}
@@ -209,7 +226,13 @@ def logout():
 def on_move(data: dict):
     global walls
     if request.sid in players:
-        if not is_obstacle_in_the_way(walls, data["x"], data["y"]) and data["x"] + 10 < 800 and data["x"] - 10 > 0 and data["y"] + 10 < 800 and data["y"] - 10 > 0:
+        if (
+            not is_obstacle_in_the_way(walls, data["x"], data["y"])
+            and data["x"] + 10 < 800
+            and data["x"] - 10 > 0
+            and data["y"] + 10 < 800
+            and data["y"] - 10 > 0
+        ):
             players[request.sid]["x"] = data["x"]
             players[request.sid]["y"] = data["y"]
         socket.emit("update_all", players)
@@ -234,10 +257,11 @@ def on_shot(data: dict):
             if distanceToPlayer > 150:
                 continue
             distanceToClick = math.sqrt(
-                (player["x"] - data["shot_x"]) ** 2 + (player["y"] - data["shot_y"]) ** 2
+                (player["x"] - data["shot_x"]) ** 2
+                + (player["y"] - data["shot_y"]) ** 2
             )
             if distanceToClick <= 10:
-                socket.emit("show_hit", {"x": player["x"], "y": player["y"],"id":id})
+                socket.emit("show_hit", {"x": player["x"], "y": player["y"], "id": id})
                 return
 
 

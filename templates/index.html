@@ -13,9 +13,10 @@
         <button type="join_to_survivor" class="btn btn-success" id="survivor">Войти за выживающего</button>
     </div>
 </div>
-<div id="joystick" style="display:none;">
-    <div id="joystick-base"></div>
-    <div id="joystick-stick"></div>
+<div class="row mt-3">
+    <div class="col-12 text-center m-3">
+        <p id="timer">Ожидание начала раунда...</p>
+    </div>
 </div>
 <canvas width="800" height="800" id="game"></canvas>
 {% endblock %}
@@ -66,7 +67,7 @@
         const ctx = canvas.getContext('2d');
         var players = {};
         var walls = {}
-
+        var roundEndTime = null;
         const speedx = 10;
         const speedy = 10;
         function draw() {
@@ -172,19 +173,32 @@
             hunter_paragraph.textContent = `Число охотников: ${data.total_hunters}/${data.max_hunters}`
             survivors_paragraph.textContent = `Число выживших: ${data.total_survivors}`
         }
+        function updateTimer() {
+            console.log(Date.now(), Date.now() / 1000);
+            let now = Date.now() / 1000;
+            let timeLeft = roundEndTime - now;
+            let minutes = Math.floor(timeLeft / 60);
+            let seconds = Math.floor(timeLeft % 60);
+            document.getElementById('timer').innerText = `${minutes}:${seconds}`;
+        }
 
         socket.on('ur_sid', function (data) {
             mySid = data.id;
-        })
+        });
         socket.on('kill_signal', function (data) {
             if (mySid == data.target_id) {
                 alert("Вы стали жертвой охотника!");
             }
+        });
+        socket.on('start_game_timer',function(data){
+            roundEndTime = data.end_time;
+            alert('Игра начинается!')
+            timerInterval = setInterval(updateTimer, 1000);
         })
         socket.on('hunter_win', function (data) {
             UpdateInfo(data);
             alert('Выживших нет, охотник победил!');
-        })
+        });
         socket.on('update_all', function (data) {
             players = data;
             draw()
@@ -203,41 +217,4 @@
         })
     });
 </script>
-<style>
-    #joystick {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        width: 120px;
-        height: 120px;
-        z-index: 100;
-    }
-
-    #joystick-base {
-        position: absolute;
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        border: 3px solid rgba(255, 255, 255, 0.5);
-    }
-
-    #joystick-stick {
-        position: absolute;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.7);
-        left: 35px;
-        top: 35px;
-        transition: all 0.1s;
-    }
-
-    /* Скрываем джойстик на десктопе */
-    @media (min-width: 768px) {
-        #joystick {
-            display: none !important;
-        }
-    }
-</style>
 {% endblock %}
