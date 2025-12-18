@@ -43,9 +43,10 @@
         }).then(data => {
             if (data["status"] == 403) {
                 alert("Охотник уже выбран!");
-            }
-            if (data["status"] == 401) {
-                alert("нужно зарегистрироваться!");
+            } else if (data["status"] == 401) {
+                alert("Нужно зарегистрироваться!");
+            } else if (data["status"] == 406) {
+                alert("Вы - единственный выживший!");
             }
         })
     };
@@ -179,7 +180,16 @@
             let timeLeft = roundEndTime - now;
             let minutes = Math.floor(timeLeft / 60);
             let seconds = Math.floor(timeLeft % 60);
-            document.getElementById('timer').innerText = `${minutes}:${seconds}`;
+            if (timeLeft > 0) {
+                seconds = `${seconds}`;
+                if (seconds.length == 1) {
+                    seconds = '0' + seconds;
+                }
+                document.getElementById('timer').innerText = `0${minutes}:${seconds}`;
+            } else {
+                document.getElementById('timer').innerText = `00:00`;
+                socket.emit('stop_timer_signal');
+            }
         }
 
         socket.on('ur_sid', function (data) {
@@ -198,6 +208,10 @@
         socket.on('hunter_win', function (data) {
             UpdateInfo(data);
             alert('Выживших нет, охотник победил!');
+        });
+        socket.on('survivors_win', function (data) {
+            UpdateInfo(data);
+            alert('Выжившие победили!');
         });
         socket.on('update_all', function (data) {
             players = data;
