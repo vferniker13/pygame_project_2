@@ -56,11 +56,16 @@ def get_db():
 
 def wait_to_game():
     global final, hunter_kill, round_in_proccess
+    socket.emit("start_wait", {"end_time": time.time() + 10})
     time.sleep(10)
-    final = time.time() + 180
-    hunter_kill = True
-    round_in_proccess = True
-    socket.emit("start_game_timer", {"end_time": final})
+    if players["hunter"]:
+        final = time.time() + 10#180
+        hunter_kill = True
+        round_in_proccess = True
+        socket.emit("start_game_timer", {"end_time": final})
+        if players["hunter"] is None:
+            stop_timer()
+            
 
 
 @login_manager.user_loader
@@ -195,16 +200,17 @@ def stop_timer():
     global round_in_proccess
     if info["total_survivors"] != 0:
         round_in_proccess = False
-        players[players["hunter"]]["role"] = "survivor"
-        players["hunter"] = None
-        info["total_hunters"] -= 1
-        info["total_survivors"] += 1
-        for i in players:
-            if i != "hunter" and not players[i]["is_alive"]:
-                players[i]["is_alive"] = True
-                info["total_survivors"] += 1
-        socket.emit("survivors_win", info)
-        socket.emit("update_all")
+        if players["hunter"]:
+            players[players["hunter"]]["role"] = "survivor"
+            players["hunter"] = None
+            info["total_hunters"] -= 1
+            info["total_survivors"] += 1
+            for i in players:
+                if i != "hunter" and not players[i]["is_alive"]:
+                    players[i]["is_alive"] = True
+                    info["total_survivors"] += 1
+            socket.emit("survivors_win", info)
+            socket.emit("update_all", players)
 
 
 @socket.on("kill")

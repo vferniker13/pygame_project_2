@@ -106,3 +106,4 @@ def is_wall_on_the_line(begin_point: list[int], end_point: list[int], wall: list
     has_positive = any(c > 0 for c in corners)
     has_negative = any(c < 0 for c in corners)
     return has_positive and has_negative
+

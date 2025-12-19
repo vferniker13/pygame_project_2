@@ -69,6 +69,9 @@
         var players = {};
         var walls = {}
         var roundEndTime = null;
+        var waitingTime = null;
+        var isWaiting = false;
+        var timerInterval = 0;
         const speedx = 10;
         const speedy = 10;
         function draw() {
@@ -177,7 +180,10 @@
         function updateTimer() {
             console.log(Date.now(), Date.now() / 1000);
             let now = Date.now() / 1000;
-            let timeLeft = roundEndTime - now;
+            let timeLeft = waitingTime - now;
+            if (!isWaiting) {
+                timeLeft = roundEndTime - now;
+            }   
             let minutes = Math.floor(timeLeft / 60);
             let seconds = Math.floor(timeLeft % 60);
             if (timeLeft > 0) {
@@ -187,8 +193,11 @@
                 }
                 document.getElementById('timer').innerText = `0${minutes}:${seconds}`;
             } else {
-                document.getElementById('timer').innerText = `00:00`;
-                socket.emit('stop_timer_signal');
+                document.getElementById('timer').innerText = `Ожидание начала раунда...`;
+                if (!isWaiting) {
+                    socket.emit('stop_timer_signal');
+                    clearInterval(timerInterval)
+                }
             }
         }
 
@@ -196,12 +205,14 @@
             mySid = data.id;
         });
         socket.on('kill_signal', function (data) {
+
             if (mySid == data.target_id) {
                 alert("Вы стали жертвой охотника!");
             }
         });
         socket.on('start_game_timer',function(data){
             roundEndTime = data.end_time;
+            isWaiting = false;
             alert('Игра начинается!')
             timerInterval = setInterval(updateTimer, 1000);
         })
@@ -221,6 +232,11 @@
             walls = data;
             draw()
         });
+        socket.on('start_wait', function(data) {
+            waitingTime = data.end_time;
+            isWaiting = true;
+            timerInterval = setInterval(updateTimer, 1000)
+        })
         
 
         socket.on('update_info', function(data) {
