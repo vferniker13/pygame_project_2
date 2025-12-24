@@ -42,7 +42,6 @@ login_manager.init_app(app)
 players = {"hunter": None}
 MAX_HUNTER = 1
 info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
-hunter_kill = False
 round_in_proccess = False
 
 
@@ -55,17 +54,15 @@ def get_db():
 
 
 def wait_to_game():
-    global final, hunter_kill, round_in_proccess
+    global final, round_in_proccess
     socket.emit("start_wait", {"end_time": time.time() + 10})
     time.sleep(10)
     if players["hunter"]:
-        final = time.time() + 10#180
-        hunter_kill = True
+        final = time.time() + 10  # 180
         round_in_proccess = True
         socket.emit("start_game_timer", {"end_time": final})
         if players["hunter"] is None:
             stop_timer()
-            
 
 
 @login_manager.user_loader
@@ -107,7 +104,8 @@ def login():
         db = next(get_db())
         data = request.form
         if db.query(User).filter(User.username == data["username"]).first():
-            user = db.query(User).filter(User.username == data["username"]).first()
+            user = db.query(User).filter(
+                User.username == data["username"]).first()
             if verify_password(data["password1"], user.hashed_password):
                 login_user(user)
                 return redirect("/")
@@ -140,7 +138,7 @@ def profile():
 def become_hunter(sid: str):
     global players, info, round_in_proccess
     if not round_in_proccess and info["total_hunters"] < info["max_hunters"]:
-        if current_user.is_anonymous == False:
+        if not current_user.is_anonymous:
             players[sid]["role"] = "hunter"
             socket.emit("update_all", players)
             info["total_hunters"] += 1
@@ -160,7 +158,11 @@ def become_hunter(sid: str):
 @app.route("/select/survivor/<sid>")
 def become_survivor(sid: str):
     global players, info, round_in_proccess
-    if not round_in_proccess and players[sid]["role"] == "hunter" and info["total_hunters"] > 0:
+    if (
+        not round_in_proccess
+        and players[sid]["role"] == "hunter"
+        and info["total_hunters"] > 0
+    ):
         players["hunter"] = None
         info["total_hunters"] -= 1
     if players[sid]["role"] != "survivor":
@@ -176,7 +178,7 @@ def become_survivor(sid: str):
 def on_connect():
     global players, info, walls, round_in_proccess
     username = f"Гость{info['total_survivors'] + info['total_hunters']}"
-    if current_user.is_anonymous == False:
+    if not current_user.is_anonymous:
         username = current_user.username
     players[request.sid] = {
         "username": username,
@@ -187,7 +189,7 @@ def on_connect():
         "is_alive": True if not round_in_proccess else False,
     }
     info["total_survivors"] += 1
-    if current_user.is_anonymous == False:
+    if not current_user.is_anonymous:
         players[request.sid]["color"] = current_user.color
     socket.emit("ur_sid", {"id": request.sid}, to=request.sid)
     socket.emit("update_all", players)
@@ -195,33 +197,16 @@ def on_connect():
     socket.emit("update_info", info)
 
 
-@socket.on("stop_timer_signal")
-def stop_timer():
-    global round_in_proccess
-    if info["total_survivors"] != 0:
-        round_in_proccess = False
-        if players["hunter"]:
-            players[players["hunter"]]["role"] = "survivor"
-            players["hunter"] = None
-            info["total_hunters"] -= 1
-            info["total_survivors"] += 1
-            for i in players:
-                if i != "hunter" and not players[i]["is_alive"]:
-                    players[i]["is_alive"] = True
-                    info["total_survivors"] += 1
-            socket.emit("survivors_win", info)
-            socket.emit("update_all", players)
-
-
 @socket.on("kill")
 def kill_player(data: dict):
-    global players, info, hunter_kill
-    if hunter_kill == True and players[data["target_id"]] != players["hunter"]:
+    global players, info, round_in_proccess
+    if round_in_proccess is True and\
+       players[data["target_id"]] != players["hunter"]:
         players[data["target_id"]]["is_alive"] = False
         info["total_survivors"] -= 1
         socket.emit("kill_signal", data)
         socket.emit("update_info", info)
-    check_game_end()
+    stop_timer()
     socket.emit("update_all", players)
 
 
@@ -263,15 +248,17 @@ def on_move(data: dict):
 
 @socket.on("check_shot")
 def on_shot(data: dict):
-    global players
+    global players, round_in_proccess
     for wall in walls:
         data_end = [data["shot_x"], data["shot_y"]]
-        hunter = [players[players["hunter"]]["x"], players[players["hunter"]]["y"]]
+        hunter = [players[players["hunter"]]["x"],
+                  players[players["hunter"]]["y"]]
         wall = walls.get(wall)
         if is_wall_on_the_line(hunter, data_end, wall):
             return
     for id in players:
-        if players[id] and not isinstance(players[id], str) and id != players["hunter"]:
+        if players[id] and not isinstance(players[id], str) and\
+          id != players["hunter"]:
             player = players[id]
             distanceToPlayer = math.sqrt(
                 (player["x"] - players[players["hunter"]]["x"]) ** 2
@@ -283,12 +270,34 @@ def on_shot(data: dict):
                 (player["x"] - data["shot_x"]) ** 2
                 + (player["y"] - data["shot_y"]) ** 2
             )
-            if distanceToClick <= 10:
-                socket.emit("show_hit", {"x": player["x"], "y": player["y"], "id": id})
+            if distanceToClick <= 10 and round_in_proccess is True:
+                socket.emit("show_hit",
+                            {"x": player["x"], "y": player["y"], "id": id})
                 return
 
 
-def check_game_end():
+@socket.on("stop_timer_signal")
+def stop_timer():
+    global round_in_proccess, info
+    round_in_proccess = False
+    old_survivors_amount = info["total_survivors"]
+    if players["hunter"]:
+        players[players["hunter"]]["role"] = "survivor"
+        players["hunter"] = None
+        info["total_hunters"] -= 1
+        info["total_survivors"] += 1
+        for i in players:
+            if i != "hunter" and not players[i]["is_alive"]:
+                players[i]["is_alive"] = True
+                info["total_survivors"] += 1
+        if old_survivors_amount == 0:
+            socket.emit("hunter_win", info)
+        else:
+            socket.emit("survivors_win", info)
+        socket.emit("update_all", players)
+
+
+"""def check_game_end():
     global info, round_in_proccess
     if info["total_survivors"] == 0:
         players[players["hunter"]]["role"] = "survivor"
@@ -301,7 +310,7 @@ def check_game_end():
                 info["total_survivors"] += 1
         round_in_proccess = False
         socket.emit("hunter_win", info)
-        socket.emit("update_all")
+        socket.emit("update_all")"""
 
 
 socket.run(app, debug=True)

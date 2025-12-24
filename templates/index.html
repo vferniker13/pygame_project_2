@@ -18,6 +18,11 @@
         <p id="timer">Ожидание начала раунда...</p>
     </div>
 </div>
+<div class="row mt-3">
+    <div class="col-12 text-center m-3">
+        <p id="result" style="color: red;"></p>
+    </div>
+</div>
 <canvas width="800" height="800" id="game"></canvas>
 {% endblock %}
 {% block script %}
@@ -47,7 +52,7 @@
                 alert("Нужно зарегистрироваться!");
             } else if (data["status"] == 406) {
                 alert("Вы - единственный выживший!");
-            }
+            } // охотник видит всё поле до первого движения
         })
     };
     var survivor_btn = document.getElementById("survivor");
@@ -218,19 +223,19 @@
         })
         socket.on('hunter_win', function (data) {
             UpdateInfo(data);
-            alert('Выживших нет, охотник победил!');
+            document.getElementById('result').innerText = 'Выживших нет, охотник победил!';
         });
         socket.on('survivors_win', function (data) {
             UpdateInfo(data);
-            alert('Выжившие победили!');
+            document.getElementById('result').innerText = 'Выжившие победили!';
         });
         socket.on('update_all', function (data) {
             players = data;
-            draw()
+            draw();
         });
         socket.on('update_walls',function (data) {
             walls = data;
-            draw()
+            draw();
         });
         socket.on('start_wait', function(data) {
             waitingTime = data.end_time;
