@@ -278,39 +278,41 @@ def on_shot(data: dict):
 
 @socket.on("stop_timer_signal")
 def stop_timer():
+    db = next(get_db())
     global round_in_proccess, info
     round_in_proccess = False
     old_survivors_amount = info["total_survivors"]
+    old_players = players.copy()
     if players["hunter"]:
         players[players["hunter"]]["role"] = "survivor"
         players["hunter"] = None
         info["total_hunters"] -= 1
         info["total_survivors"] += 1
         for i in players:
-            if i != "hunter" and not players[i]["is_alive"]:
-                players[i]["is_alive"] = True
-                info["total_survivors"] += 1
+            if i != "hunter":
+                user = db.query(User).filter(User.username == players[i]["username"]).first()
+                user.games += 1
+                db.add(user)
+                if not players[i]["is_alive"]:
+                    players[i]["is_alive"] = True
+                    info["total_survivors"] += 1
         if old_survivors_amount == 0:
+            hunter = old_players["hunter"]
+            username = players[hunter]["username"]
+            user = db.query(User).filter(User.username == username).first()
+            user.win_hunter += 1
+            db.add(user)
             socket.emit("hunter_win", info)
         else:
+            hunter = old_players["hunter"]
+            username = players[hunter]["username"]
+            user = db.query(User).filter(User.username != username).all()
+            for i in user:
+                i.win_survivor += 1
+                db.add(i)
             socket.emit("survivors_win", info)
         socket.emit("update_all", players)
-
-
-"""def check_game_end():
-    global info, round_in_proccess
-    if info["total_survivors"] == 0:
-        players[players["hunter"]]["role"] = "survivor"
-        players["hunter"] = None
-        info["total_hunters"] -= 1
-        info["total_survivors"] += 1
-        for i in players:
-            if i != "hunter" and not players[i]["is_alive"]:
-                players[i]["is_alive"] = True
-                info["total_survivors"] += 1
-        round_in_proccess = False
-        socket.emit("hunter_win", info)
-        socket.emit("update_all")"""
+        db.commit()
 
 
 socket.run(app, debug=True)
