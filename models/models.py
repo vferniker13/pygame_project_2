@@ -11,7 +11,7 @@ class User(UserMixin, Schema):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True)
     hashed_password = Column(String)
-    color = Column(String,default=generate_random_color())
+    color = Column(String, default=generate_random_color())
     kills = Column(Integer, default=0)
     games = Column(Integer, default=0)
     win_hunter = Column(Integer, default=0)

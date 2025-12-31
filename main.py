@@ -21,6 +21,7 @@ from utils import (
     is_wall_on_the_line,
 )
 import db_session
+import os
 
 walls = {}
 final = None
@@ -30,7 +31,9 @@ def on_startup():
     global walls
     app = Flask(__name__)
     walls = generate_walls(10)
-    app.config["SECRET_KEY"] = "example"
+    if not os.getenv("SECRET_KEY"):
+        os.environ["SECRET_KEY"] = "example"
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
     return app
 
 
@@ -104,8 +107,11 @@ def login():
         db = next(get_db())
         data = request.form
         if db.query(User).filter(User.username == data["username"]).first():
-            user = db.query(User).filter(
-                User.username == data["username"]).first()
+            user = (
+                db.query(User)
+                .filter(User.username == data["username"])
+                .first()
+            )
             if verify_password(data["password1"], user.hashed_password):
                 login_user(user)
                 return redirect("/")
@@ -200,8 +206,10 @@ def on_connect():
 @socket.on("kill")
 def kill_player(data: dict):
     global players, info, round_in_proccess
-    if round_in_proccess is True and\
-       players[data["target_id"]] != players["hunter"]:
+    if (
+        round_in_proccess is True
+        and players[data["target_id"]] != players["hunter"]
+    ):
         players[data["target_id"]]["is_alive"] = False
         info["total_survivors"] -= 1
         hunter = players["hunter"]
@@ -258,14 +266,19 @@ def on_shot(data: dict):
     global players, round_in_proccess
     for wall in walls:
         data_end = [data["shot_x"], data["shot_y"]]
-        hunter = [players[players["hunter"]]["x"],
-                  players[players["hunter"]]["y"]]
+        hunter = [
+            players[players["hunter"]]["x"],
+            players[players["hunter"]]["y"],
+        ]
         wall = walls.get(wall)
         if is_wall_on_the_line(hunter, data_end, wall):
             return
     for id in players:
-        if players[id] and not isinstance(players[id], str) and\
-          id != players["hunter"]:
+        if (
+            players[id]
+            and not isinstance(players[id], str)
+            and id != players["hunter"]
+        ):
             player = players[id]
             distanceToPlayer = math.sqrt(
                 (player["x"] - players[players["hunter"]]["x"]) ** 2
@@ -278,8 +291,9 @@ def on_shot(data: dict):
                 + (player["y"] - data["shot_y"]) ** 2
             )
             if distanceToClick <= 10 and round_in_proccess is True:
-                socket.emit("show_hit",
-                            {"x": player["x"], "y": player["y"], "id": id})
+                socket.emit(
+                    "show_hit", {"x": player["x"], "y": player["y"], "id": id}
+                )
                 return
 
 
@@ -297,7 +311,11 @@ def stop_timer():
         info["total_survivors"] += 1
         for i in players:
             if i != "hunter":
-                user = db.query(User).filter(User.username == players[i]["username"]).first()
+                user = (
+                    db.query(User)
+                    .filter(User.username == players[i]["username"])
+                    .first()
+                )
                 user.games += 1
                 db.add(user)
                 db.commit()
