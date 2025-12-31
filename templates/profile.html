@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 align="center" class="m-3">Ваш профиль</h2>
+
+<div class="container">
+
+<div class="text-center m-5">
+    <form method="post">
+    <div class="mb-3">
+        <label for="exampleInputEmail1" class="form-label">Юзернейм</label>
+        <input type="name" value="{{user.username}}" class="form-control" id="exampleInputEmail1" name="username">
+    </div>
+    <div class = "m-3">
+    <label for="exampleColorInput" class="form-label">Выбрать цвет</label>
+    <input type="color" value="{{user.color}}" class="form-control form-control-color" name = "color" id="exampleColorInput" value="#563d7c" title="Choose your color">
+    <button type="submit" class="btn btn-primary">Изменить данные</button>
+    <a class="btn btn-danger" href="/logout">Выйти</a>
+    <h3 align="center" class="mt-3">Статистика</h3>
+    <table class="mt-3">
+        <tr>
+            <th class="p-2">Всего побед</th>
+            <th class="p-2"> Побед за охотника</th>
+            <th class="p-2"> Побед за выжившего</th>
+            <th class="p-2"> Всего игр</th>
+            <th class="p-2"> Всего убийств</th>
+            <th class="p-2">Процент побед</th>
+        </tr>
+        <tr>
+            <td>{{user.win_hunter + user.win_survivor}}</td>
+            <td>{{user.win_hunter}}</td>
+            <td>{{user.win_survivor}}</td>
+            <td>{{user.games}}</td>
+            <td>{{user.kills}}</td>
+            {% if user.games >= 1 %}
+                <td>{{(user.win_hunter + user.win_survivor) / user.games * 100 | round(0, 'floor')}}%</td>
+            {% else %}
+                <td>0</td>
+            {% endif %}
+        </tr>
+            
+    </table>
+    </div>
+    </form>
+</div>
+{% endblock %}
