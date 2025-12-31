@@ -204,6 +204,13 @@ def kill_player(data: dict):
        players[data["target_id"]] != players["hunter"]:
         players[data["target_id"]]["is_alive"] = False
         info["total_survivors"] -= 1
+        hunter = players["hunter"]
+        username = players[hunter]["username"]
+        db = next(get_db())
+        user = db.query(User).filter(User.username == username).first()
+        user.kills += 1
+        db.add(user)
+        db.commit()
         socket.emit("kill_signal", data)
         socket.emit("update_info", info)
     stop_timer()
@@ -293,6 +300,7 @@ def stop_timer():
                 user = db.query(User).filter(User.username == players[i]["username"]).first()
                 user.games += 1
                 db.add(user)
+                db.commit()
                 if not players[i]["is_alive"]:
                     players[i]["is_alive"] = True
                     info["total_survivors"] += 1
@@ -302,6 +310,7 @@ def stop_timer():
             user = db.query(User).filter(User.username == username).first()
             user.win_hunter += 1
             db.add(user)
+            db.commit()
             socket.emit("hunter_win", info)
         else:
             hunter = old_players["hunter"]
@@ -310,9 +319,9 @@ def stop_timer():
             for i in user:
                 i.win_survivor += 1
                 db.add(i)
+                db.commit()
             socket.emit("survivors_win", info)
         socket.emit("update_all", players)
-        db.commit()
 
 
 socket.run(app, debug=True)
