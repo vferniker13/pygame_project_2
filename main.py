@@ -27,7 +27,7 @@ walls = {}
 final = None
 
 
-def on_startup():
+def create_app():
     global walls
     app = Flask(__name__)
     walls = generate_walls(10)
@@ -37,7 +37,7 @@ def on_startup():
     return app
 
 
-app = on_startup()
+app = create_app()
 login_manager = LoginManager()
 login_manager.login_view = "login"
 socket = SocketIO(app)
