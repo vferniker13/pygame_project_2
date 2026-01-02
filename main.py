@@ -37,11 +37,10 @@ def create_app():
     return app
 
 
-app = create_app()
 login_manager = LoginManager()
 login_manager.login_view = "login"
-socket = SocketIO(app)
-login_manager.init_app(app)
+socket = SocketIO()
+login_manager.init_app()
 players = {"hunter": None}
 MAX_HUNTER = 1
 info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
@@ -340,6 +339,3 @@ def stop_timer():
                 db.commit()
             socket.emit("survivors_win", info)
         socket.emit("update_all", players)
-
-
-socket.run(app, debug=True)
