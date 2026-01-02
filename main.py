@@ -40,7 +40,6 @@ def create_app():
 login_manager = LoginManager()
 login_manager.login_view = "login"
 socket = SocketIO()
-login_manager.init_app()
 players = {"hunter": None}
 MAX_HUNTER = 1
 info = {"total_hunters": 0, "max_hunters": MAX_HUNTER, "total_survivors": 0}
