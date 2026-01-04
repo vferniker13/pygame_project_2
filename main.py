@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, Blueprint
 from flask_socketio import SocketIO
 import math
 import threading
@@ -25,12 +25,13 @@ import os
 
 walls = {}
 final = None
+bp = Blueprint("main", __name__)
 
 
 def create_app():
-    global walls
+    global walls, bp
     app = Flask(__name__)
-    add_routes(app)
+    app.register_blueprint(bp)
     walls = generate_walls(10)
     if not os.getenv("SECRET_KEY"):
         os.environ["SECRET_KEY"] = "example"
@@ -73,14 +74,13 @@ def load_user(user_id):
     return db.query(User).filter(User.id == user_id).first()
 
 
-def add_routes(app):
-    @app.route("/", methods=["GET"])
-    def index():
+@bp.route("/", methods=["GET"])
+def index():
         return render_template("index.html", user=current_user)
     
     
-    @app.route("/register", methods=["GET", "POST"])
-    def register():
+@bp.route("/register", methods=["GET", "POST"])
+def register():
         if request.method == "GET":
             return render_template("register.html", user=current_user)
         if request.method == "POST":
@@ -99,92 +99,92 @@ def add_routes(app):
             )
     
     
-    @app.route("/login", methods=["GET", "POST"])
-    def login():
-        if request.method == "GET":
-            return render_template("login.html", user=current_user)
-        if request.method == "POST":
-            db = next(get_db())
-            data = request.form
-            if db.query(User).filter(User.username == data["username"]).first():
-                user = (
-                    db.query(User)
-                    .filter(User.username == data["username"])
-                    .first()
-                )
-                if verify_password(data["password1"], user.hashed_password):
-                    login_user(user)
-                    return redirect("/")
-                return render_template(
-                    "login.html", user=current_user, error="Неверный пароль!"
-                )
-            return render_template(
-                "login.html", user=current_user, error="Пользователя не существует"
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html", user=current_user)
+    if request.method == "POST":
+        db = next(get_db())
+        data = request.form
+        if db.query(User).filter(User.username == data["username"]).first():
+            user = (
+                db.query(User)
+                .filter(User.username == data["username"])
+                .first()
             )
+            if verify_password(data["password1"], user.hashed_password):
+                login_user(user)
+                return redirect("/")
+            return render_template(
+                "login.html", user=current_user, error="Неверный пароль!"
+            )
+        return render_template(
+            "login.html", user=current_user, error="Пользователя не существует"
+        )
     
     
-    @app.route("/profile", methods=["GET", "POST"])
-    def profile():
-        if request.method == "GET":
-            db = next(get_db())
-            user = db.query(User).filter(User.id == current_user.id).first()
-            return render_template("profile.html", user=user)
-        if request.method == "POST":
-            db = next(get_db())
-            data = request.form
-            user = db.query(User).filter(User.id == current_user.id).first()
-            user.username = data["username"]
-            user.color = data["color"]
-            db.add(user)
-            db.commit()
-            return render_template("profile.html", user=user)
+@bp.route("/profile", methods=["GET", "POST"])
+def profile():
+    if request.method == "GET":
+        db = next(get_db())
+        user = db.query(User).filter(User.id == current_user.id).first()
+        return render_template("profile.html", user=user)
+    if request.method == "POST":
+        db = next(get_db())
+        data = request.form
+        user = db.query(User).filter(User.id == current_user.id).first()
+        user.username = data["username"]
+        user.color = data["color"]
+        db.add(user)
+        db.commit()
+        return render_template("profile.html", user=user)
     
     
-    @app.route("/select/hunter/<sid>")
-    def become_hunter(sid: str):
-        global players, info, round_in_proccess
-        if not round_in_proccess and info["total_hunters"] < info["max_hunters"]:
-            if not current_user.is_anonymous:
-                players[sid]["role"] = "hunter"
-                socket.emit("update_all", players)
-                info["total_hunters"] += 1
-                info["total_survivors"] -= 1
-                players["hunter"] = sid
-                socket.emit("update_info", info)
-                if info["total_survivors"] <= 0:
-                    return {"status": 406}
-                thread = threading.Thread(target=wait_to_game)
-                thread.start()
-                return {"status": 200}
-            else:
-                return {"status": 401}
-        return {"status": 403}
-    
-    
-    @app.route("/select/survivor/<sid>")
-    def become_survivor(sid: str):
-        global players, info, round_in_proccess
-        if (
-            not round_in_proccess
-            and players[sid]["role"] == "hunter"
-            and info["total_hunters"] > 0
-        ):
-            players["hunter"] = None
-            info["total_hunters"] -= 1
-        if players[sid]["role"] != "survivor":
-            players[sid]["role"] = "survivor"
-            info["total_survivors"] += 1
+@bp.route("/select/hunter/<sid>")
+def become_hunter(sid: str):
+    global players, info, round_in_proccess
+    if not round_in_proccess and info["total_hunters"] < info["max_hunters"]:
+        if not current_user.is_anonymous:
+            players[sid]["role"] = "hunter"
             socket.emit("update_all", players)
+            info["total_hunters"] += 1
+            info["total_survivors"] -= 1
+            players["hunter"] = sid
             socket.emit("update_info", info)
+            if info["total_survivors"] <= 0:
+                return {"status": 406}
+            thread = threading.Thread(target=wait_to_game)
+            thread.start()
             return {"status": 200}
-        return {"status": 403}
+        else:
+            return {"status": 401}
+    return {"status": 403}
+    
+    
+@bp.route("/select/survivor/<sid>")
+def become_survivor(sid: str):
+    global players, info, round_in_proccess
+    if (
+        not round_in_proccess
+        and players[sid]["role"] == "hunter"
+        and info["total_hunters"] > 0
+    ):
+        players["hunter"] = None
+        info["total_hunters"] -= 1
+    if players[sid]["role"] != "survivor":
+        players[sid]["role"] = "survivor"
+        info["total_survivors"] += 1
+        socket.emit("update_all", players)
+        socket.emit("update_info", info)
+        return {"status": 200}
+    return {"status": 403}
     
 
-    @app.route("/logout")
-    @login_required
-    def logout():
-        logout_user()
-        return redirect("/")
+@bp.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
 
 
 @socket.on("connect")
